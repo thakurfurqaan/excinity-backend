@@ -9,7 +9,6 @@ services:
       - db
     environment:
       - DATABASE_URL=postgres://postgres:password@db:5432/excinity_posts?sslmode=disable
-      - JWT_SECRET=your_jwt_secret_here
 
   db:
     image: postgres:13
