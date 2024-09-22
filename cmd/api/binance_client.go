@@ -24,12 +24,17 @@ type Candle struct {
 }
 
 func startBinanceClient(symbol string) {
+
+	log.Println("Starting Binance client for symbol:", symbol)
+
 	url := "wss://stream.binance.com:9443/ws/" + symbol + "@aggTrade"
 	c, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
 		log.Fatal("dial:", err)
 	}
 	defer c.Close()
+
+	log.Println("Connected to Binance WebSocket for symbol:", symbol)
 
 	var currentCandle Candle
 	var candleStartTime time.Time
