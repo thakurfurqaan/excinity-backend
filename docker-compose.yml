@@ -5,22 +5,10 @@ services:
       target: builder
     ports:
       - "8080:8080"
-    depends_on:
-      - db
-    environment:
-      - DATABASE_URL=postgres://postgres:password@db:5432/excinity_posts?sslmode=disable
     volumes:
-      - .:/app
+      - ./candles.json:/app/candles.json
     command: air -c .air.toml
 
-  db:
-    image: postgres:13
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=excinity_posts
 
 volumes:
-  postgres_data:
+  app_data:

@@ -32,7 +32,16 @@ func startBinanceClient(symbol string) {
 	if err != nil {
 		log.Fatal("dial:", err)
 	}
-	defer c.Close()
+
+	defer func() {
+		log.Println("Closing Binance WebSocket connection for symbol:", symbol)
+		err := c.Close()
+		if err != nil {
+			log.Printf("Error closing Binance WebSocket connection for symbol %s: %v", symbol, err)
+		} else {
+			log.Println("Successfully closed Binance WebSocket connection for symbol:", symbol)
+		}
+	}()
 
 	log.Println("Connected to Binance WebSocket for symbol:", symbol)
 
@@ -60,7 +69,7 @@ func startBinanceClient(symbol string) {
 		}
 
 		now := time.Now().UTC()
-		if now.Sub(candleStartTime) >= time.Minute || currentCandle.Open == 0 {
+		if now.Minute() != candleStartTime.Minute() || currentCandle.Open == 0 {
 			if currentCandle.Open != 0 {
 				broadcastCandle(currentCandle)
 			}
