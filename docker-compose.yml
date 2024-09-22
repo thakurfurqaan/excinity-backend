@@ -1,14 +1,17 @@
-version: '3.8'
-
 services:
   app:
-    build: .
+    build: 
+      context: .
+      target: builder
     ports:
       - "8080:8080"
     depends_on:
       - db
     environment:
       - DATABASE_URL=postgres://postgres:password@db:5432/excinity_posts?sslmode=disable
+    volumes:
+      - .:/app
+    command: air -c .air.toml
 
   db:
     image: postgres:13

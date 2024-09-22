@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -23,7 +24,7 @@ var symbols = []string{"BTCUSDT", "ETHUSDT", "PEPEUSDT"}
 func main() {
 	// Start Binance WebSocket clients
 	for _, symbol := range symbols {
-		go startBinanceClient(symbol)
+		go startBinanceClient(strings.ToLower(symbol))
 	}
 
 	// HTTP handler for WebSocket connections
