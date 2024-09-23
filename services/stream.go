@@ -20,7 +20,6 @@ func StartSymbolStream(exchangeClient exchange.ExchangeClient, symbol string) er
 	}
 
 	var currentCandle models.Candle
-	var candleStartTime time.Time
 
 	for {
 		select {
@@ -29,7 +28,7 @@ func StartSymbolStream(exchangeClient exchange.ExchangeClient, symbol string) er
 				log.Printf("Tick channel closed for symbol %s", symbol)
 				return nil
 			}
-			currentCandle, err = processTickToCandle(tick, currentCandle, &candleStartTime)
+			currentCandle, err = processTickToCandle(tick, currentCandle)
 			if err != nil {
 				log.Printf("Failed to process tick to candle: %v", err)
 				continue
@@ -45,16 +44,12 @@ func StartSymbolStream(exchangeClient exchange.ExchangeClient, symbol string) er
 	}
 }
 
-func processTickToCandle(tick exchange.Tick, currentCandle models.Candle, candleStartTime *time.Time) (models.Candle, error) {
+func processTickToCandle(tick exchange.Tick, currentCandle models.Candle) (models.Candle, error) {
 	now := time.Now().UTC()
-	if now.Minute() != candleStartTime.Minute() || currentCandle.Open == 0 {
-		if currentCandle.Open != 0 {
-			return currentCandle, nil
-		}
-		*candleStartTime = now.Truncate(time.Minute)
+	if now.Minute() != currentCandle.Timestamp.Minute() || currentCandle.Open == 0 {
 		currentCandle = models.Candle{
 			Symbol:    tick.Symbol,
-			Timestamp: *candleStartTime,
+			Timestamp: now.Truncate(time.Minute),
 			Open:      tick.Price,
 			High:      tick.Price,
 			Low:       tick.Price,
