@@ -3,10 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
 	"excinity/exchange"
 	"excinity/routes"
@@ -31,17 +28,9 @@ func main() {
 
 	http.HandleFunc("/ws", routes.HandleWebsocketConnections)
 
-	go func() {
-		log.Println("Server starting on :8080")
-		if err := http.ListenAndServe(":8080", nil); err != nil {
-			log.Fatalf("ListenAndServe error: %v", err)
-		}
-	}()
-
-	// Keep the main goroutine running
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
-
-	log.Println("Shutting down gracefully...")
+	log.Println("Server starting on :8080")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Fatalf("ListenAndServe error: %v", err)
+	}
+	log.Println("Server CLOSED")
 }

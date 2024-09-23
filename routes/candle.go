@@ -41,6 +41,7 @@ func HandleWebsocketConnections(w http.ResponseWriter, r *http.Request) {
 }
 
 func BroadcastData(data interface{}) {
+	log.Println("Broadcasting data: ", data)
 	clientsMux.Lock()
 	for client := range clients {
 		err := client.WriteJSON(data)

@@ -34,20 +34,22 @@ func StartSymbolStream(exchangeClient exchange.ExchangeClient, symbol string) er
 				log.Printf("Failed to process tick to candle: %v", err)
 				continue
 			}
-			routes.BroadcastData(currentCandle)
+			go routes.BroadcastData(currentCandle)
 		case <-ctx.Done():
 			log.Printf("Context cancelled for symbol %s", symbol)
 			return nil
+		default:
+			time.Sleep(100 * time.Millisecond)
 		}
+
 	}
 }
 
 func processTickToCandle(tick exchange.Tick, currentCandle models.Candle, candleStartTime *time.Time) (models.Candle, error) {
-	log.Printf("Processing tick to candle: %+v", tick)
 	now := time.Now().UTC()
 	if now.Minute() != candleStartTime.Minute() || currentCandle.Open == 0 {
 		if currentCandle.Open != 0 {
-			routes.BroadcastData(currentCandle)
+			return currentCandle, nil
 		}
 		*candleStartTime = now.Truncate(time.Minute)
 		currentCandle = models.Candle{
@@ -67,6 +69,5 @@ func processTickToCandle(tick exchange.Tick, currentCandle models.Candle, candle
 			currentCandle.Low = tick.Price
 		}
 	}
-
 	return currentCandle, nil
 }

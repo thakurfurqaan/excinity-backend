@@ -22,7 +22,7 @@ func NewBinanceClient() *BinanceClient {
 }
 
 func (b *BinanceClient) Connect(ctx context.Context, symbol string) (<-chan Tick, error) {
-	tickChan := make(chan Tick, 10000) // Buffered channel to prevent blocking
+	tickChan := make(chan Tick)
 
 	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@aggTrade", symbol)
 
@@ -75,13 +75,7 @@ func (b *BinanceClient) Connect(ctx context.Context, symbol string) (<-chan Tick
 					continue
 				}
 
-				log.Printf("Received tick for symbol %s: price = %f", rawTick.Symbol, price)
-
-				select {
-				case tickChan <- Tick{Symbol: rawTick.Symbol, Price: price}:
-				default:
-					log.Printf("Tick channel full for symbol %s, discarding tick", symbol)
-				}
+				tickChan <- Tick{Symbol: rawTick.Symbol, Price: price}
 			}
 		}
 	}()
