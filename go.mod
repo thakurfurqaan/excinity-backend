@@ -1,6 +1,11 @@
-module github.com/thakurfurqaan/excinity-posts
+module excinity
 
 go 1.23.1
+
+require (
+	github.com/gorilla/websocket v1.5.3
+	gorm.io/gorm v1.25.12
+)
 
 require (
 	github.com/bytedance/sonic v1.12.2 // indirect
@@ -15,7 +20,6 @@ require (
 	github.com/go-playground/validator/v10 v10.22.1 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
-	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.7.1 // indirect
@@ -41,5 +45,4 @@ require (
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/postgres v1.5.9 // indirect
-	gorm.io/gorm v1.25.12 // indirect
 )

@@ -1,4 +1,4 @@
-package main
+package db
 
 import (
 	"encoding/json"
@@ -6,6 +6,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"excinity/models"
 )
 
 type InMemoryDB struct {
@@ -28,7 +30,7 @@ func NewInMemoryDB(filename string) (*InMemoryDB, error) {
 
 func (db *InMemoryDB) InsertCandle(symbol string, timestamp time.Time, open, high, low, close float64) error {
 	key := CandleKey{Symbol: symbol, Time: timestamp.Truncate(time.Minute)}
-	candle := Candle{
+	candle := models.Candle{
 		Symbol:    symbol,
 		Timestamp: timestamp,
 		Open:      open,
@@ -40,12 +42,12 @@ func (db *InMemoryDB) InsertCandle(symbol string, timestamp time.Time, open, hig
 	return db.save()
 }
 
-func (db *InMemoryDB) GetCandles(symbol string, start, end time.Time) ([]Candle, error) {
-	var candles []Candle
+func (db *InMemoryDB) GetCandles(symbol string, start, end time.Time) ([]models.Candle, error) {
+	var candles []models.Candle
 	db.data.Range(func(key, value interface{}) bool {
 		k := key.(CandleKey)
 		if k.Symbol == symbol && !k.Time.Before(start) && k.Time.Before(end) {
-			candles = append(candles, value.(Candle))
+			candles = append(candles, value.(models.Candle))
 		}
 		return true
 	})
@@ -60,9 +62,9 @@ func (db *InMemoryDB) save() error {
 	defer file.Close()
 
 	encoder := json.NewEncoder(file)
-	var data []Candle
+	var data []models.Candle
 	db.data.Range(func(_, value interface{}) bool {
-		data = append(data, value.(Candle))
+		data = append(data, value.(models.Candle))
 		return true
 	})
 
@@ -82,7 +84,7 @@ func (db *InMemoryDB) load() error {
 	}
 	defer file.Close()
 
-	var data []Candle
+	var data []models.Candle
 	decoder := json.NewDecoder(file)
 	if err := decoder.Decode(&data); err != nil {
 		return fmt.Errorf("failed to decode data: %w", err)

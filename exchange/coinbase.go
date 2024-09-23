@@ -1,10 +1,12 @@
-package main
+package exchange
 
 import (
 	"context"
 	"fmt"
 	"strconv"
 	"time"
+
+	"excinity/models"
 
 	"github.com/gorilla/websocket"
 )
@@ -80,12 +82,12 @@ func (c *CoinbaseClient) GetAvailableSymbols() ([]string, error) {
 	return []string{"BTC-USD", "ETH-USD"}, nil
 }
 
-func (c *CoinbaseClient) GetHistoricalData(symbol string, limit int) ([]Candle, error) {
+func (c *CoinbaseClient) GetHistoricalData(symbol string, limit int) ([]models.Candle, error) {
 	// Implement fetching historical data from Coinbase API
 	// This is a placeholder implementation
-	candles := make([]Candle, limit)
+	candles := make([]models.Candle, limit)
 	for i := 0; i < limit; i++ {
-		candles[i] = Candle{
+		candles[i] = models.Candle{
 			Symbol:    symbol,
 			Timestamp: time.Now().Add(-time.Duration(i) * time.Minute),
 			Open:      1000 + float64(i),

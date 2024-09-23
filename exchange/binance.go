@@ -1,11 +1,13 @@
-package main
+package exchange
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
-	"time"
+
+	"excinity/models"
 
 	"github.com/gorilla/websocket"
 )
@@ -20,16 +22,21 @@ func NewBinanceClient() *BinanceClient {
 
 func (b *BinanceClient) Connect(ctx context.Context, symbol string) (<-chan Tick, error) {
 	tickChan := make(chan Tick)
+
 	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@aggTrade", symbol)
+
+	log.Println("Starting Binance client for symbol:", symbol)
 
 	c, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("dial: %w", err)
 	}
 
+	log.Println("Connected to Binance WebSocket for symbol:", symbol)
+
 	go func() {
 		defer close(tickChan)
-		defer c.Close()
+		defer closeWebsocketConn(c, symbol)
 
 		for {
 			select {
@@ -54,7 +61,7 @@ func (b *BinanceClient) Connect(ctx context.Context, symbol string) (<-chan Tick
 
 				price, err := strconv.ParseFloat(rawTick.Price, 64)
 				if err != nil {
-					// Handle error
+					log.Printf("Error parsing price for symbol %s: %v", rawTick.Symbol, err)
 					continue
 				}
 
@@ -67,24 +74,22 @@ func (b *BinanceClient) Connect(ctx context.Context, symbol string) (<-chan Tick
 }
 
 func (b *BinanceClient) GetAvailableSymbols() ([]string, error) {
-	// Implement fetching available symbols from Binance API
 	// For simplicity, we're returning a static list here
 	return []string{"BTCUSDT", "ETHUSDT", "PEPEUSDT"}, nil
 }
 
-func (b *BinanceClient) GetHistoricalData(symbol string, limit int) ([]Candle, error) {
-	// Implement fetching historical data from Binance API
+func (b *BinanceClient) GetHistoricalData(symbol string, limit int) ([]models.Candle, error) {
 	// This is a placeholder implementation
-	candles := make([]Candle, limit)
-	for i := 0; i < limit; i++ {
-		candles[i] = Candle{
-			Symbol:    symbol,
-			Timestamp: time.Now().Add(-time.Duration(i) * time.Minute),
-			Open:      1000 + float64(i),
-			High:      1000 + float64(i) + 10,
-			Low:       1000 + float64(i) - 10,
-			Close:     1000 + float64(i) + 5,
-		}
-	}
+	candles := make([]models.Candle, limit)
 	return candles, nil
+}
+
+func closeWebsocketConn(c *websocket.Conn, symbol string) {
+	log.Println("Closing Binance WebSocket connection for symbol:", symbol)
+	err := c.Close()
+	if err != nil {
+		log.Printf("Error closing Binance WebSocket connection for symbol %s: %v", symbol, err)
+	} else {
+		log.Println("Successfully closed Binance WebSocket connection for symbol:", symbol)
+	}
 }

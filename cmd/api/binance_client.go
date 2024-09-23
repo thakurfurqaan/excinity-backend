@@ -6,21 +6,15 @@ import (
 	"strconv"
 	"time"
 
+	"excinity/models"
+	"excinity/routes"
+
 	"github.com/gorilla/websocket"
 )
 
 type BinanceTick struct {
 	Symbol string `json:"s"`
 	Price  string `json:"p"`
-}
-
-type Candle struct {
-	Symbol    string    `json:"symbol"`
-	Timestamp time.Time `json:"timestamp"`
-	Open      float64   `json:"open"`
-	High      float64   `json:"high"`
-	Low       float64   `json:"low"`
-	Close     float64   `json:"close"`
 }
 
 func startBinanceClient(symbol string) {
@@ -45,7 +39,7 @@ func startBinanceClient(symbol string) {
 
 	log.Println("Connected to Binance WebSocket for symbol:", symbol)
 
-	var currentCandle Candle
+	var currentCandle models.Candle
 	var candleStartTime time.Time
 
 	for {
@@ -71,10 +65,10 @@ func startBinanceClient(symbol string) {
 		now := time.Now().UTC()
 		if now.Minute() != candleStartTime.Minute() || currentCandle.Open == 0 {
 			if currentCandle.Open != 0 {
-				broadcastCandle(currentCandle)
+				routes.BroadcastData(currentCandle)
 			}
 			candleStartTime = now.Truncate(time.Minute)
-			currentCandle = Candle{
+			currentCandle = models.Candle{
 				Symbol:    symbol,
 				Timestamp: candleStartTime,
 				Open:      price,
@@ -92,6 +86,6 @@ func startBinanceClient(symbol string) {
 			}
 		}
 
-		broadcastCandle(currentCandle)
+		routes.BroadcastData(currentCandle)
 	}
 }

@@ -4,74 +4,37 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"sync"
 
-	"github.com/gorilla/websocket"
+	"excinity/exchange"
+	"excinity/routes"
+	"excinity/services"
 )
 
 var (
-	upgrader = websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-	}
-	clients    = make(map[*websocket.Conn]bool)
-	clientsMux sync.Mutex
+	exchangeClient exchange.ExchangeClient
 )
 
-var symbols = []string{"BTCUSDT", "ETHUSDT", "PEPEUSDT"}
-
 func main() {
-	// Start Binance WebSocket clients
-	for _, symbol := range symbols {
-		go startBinanceClient(strings.ToLower(symbol))
-	}
 
-	// HTTP handler for WebSocket connections
-	http.HandleFunc("/ws", handleConnections)
-
-	// Serve static files
-	fs := http.FileServer(http.Dir("./frontend/build"))
-	http.Handle("/", fs)
-
-	log.Println("Server starting on :8080")
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
-	}
-}
-
-func handleConnections(w http.ResponseWriter, r *http.Request) {
-	ws, err := upgrader.Upgrade(w, r, nil)
+	exchangeClient = exchange.NewBinanceClient()
+	symbols, err := exchangeClient.GetAvailableSymbols()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer ws.Close()
 
-	clientsMux.Lock()
-	clients[ws] = true
-	clientsMux.Unlock()
-
-	for {
-		_, _, err := ws.ReadMessage()
-		if err != nil {
-			clientsMux.Lock()
-			delete(clients, ws)
-			clientsMux.Unlock()
-			break
-		}
+	for _, symbol := range symbols {
+		go services.StartSymbolStream(exchangeClient, strings.ToLower(symbol))
 	}
-}
 
-func broadcastCandle(candle Candle) {
-	clientsMux.Lock()
-	for client := range clients {
-		err := client.WriteJSON(candle)
-		if err != nil {
-			log.Printf("error: %v", err)
-			client.Close()
-			delete(clients, client)
-		}
+	// for _, symbol := range symbols {
+	// 	go startBinanceClient(strings.ToLower(symbol))
+	// }
+
+	http.HandleFunc("/ws", routes.HandleWebsocketConnections)
+
+	log.Println("Server starting on :8080")
+	err = http.ListenAndServe(":8080", nil)
+	if err != nil {
+		log.Fatal("ListenAndServe: ", err)
 	}
-	clientsMux.Unlock()
 }
