@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"time"
 
 	"excinity/models"
 
@@ -21,13 +22,13 @@ func NewBinanceClient() *BinanceClient {
 }
 
 func (b *BinanceClient) Connect(ctx context.Context, symbol string) (<-chan Tick, error) {
-	tickChan := make(chan Tick)
+	tickChan := make(chan Tick, 10000) // Buffered channel to prevent blocking
 
 	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@aggTrade", symbol)
 
 	log.Println("Starting Binance client for symbol:", symbol)
 
-	c, _, err := websocket.DefaultDialer.Dial(url, nil)
+	c, _, err := websocket.DefaultDialer.DialContext(ctx, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("dial: %w", err)
 	}
@@ -41,12 +42,21 @@ func (b *BinanceClient) Connect(ctx context.Context, symbol string) (<-chan Tick
 		for {
 			select {
 			case <-ctx.Done():
+				log.Printf("Context cancelled for symbol %s", symbol)
 				return
 			default:
+				err := c.SetReadDeadline(time.Now().Add(10 * time.Second))
+				if err != nil {
+					log.Printf("Error setting read deadline for symbol %s: %v", symbol, err)
+					return
+				}
+
 				_, message, err := c.ReadMessage()
 				if err != nil {
-					// Handle error (log, retry, etc.)
-					continue
+					if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+						log.Printf("Unexpected WebSocket close for symbol %s: %v", symbol, err)
+					}
+					return
 				}
 
 				var rawTick struct {
@@ -55,7 +65,7 @@ func (b *BinanceClient) Connect(ctx context.Context, symbol string) (<-chan Tick
 				}
 
 				if err := json.Unmarshal(message, &rawTick); err != nil {
-					// Handle error
+					log.Printf("Error unmarshalling message for symbol %s: %v", symbol, err)
 					continue
 				}
 
@@ -65,7 +75,13 @@ func (b *BinanceClient) Connect(ctx context.Context, symbol string) (<-chan Tick
 					continue
 				}
 
-				tickChan <- Tick{Symbol: rawTick.Symbol, Price: price}
+				log.Printf("Received tick for symbol %s: price = %f", rawTick.Symbol, price)
+
+				select {
+				case tickChan <- Tick{Symbol: rawTick.Symbol, Price: price}:
+				default:
+					log.Printf("Tick channel full for symbol %s, discarding tick", symbol)
+				}
 			}
 		}
 	}()
