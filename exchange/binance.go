@@ -14,19 +14,28 @@ import (
 )
 
 type BinanceClient struct {
-	// Add any Binance-specific fields here
+	wsUrl string
 }
 
-func NewBinanceClient() *BinanceClient {
-	return &BinanceClient{}
+var binanceRawTick struct {
+	Symbol string `json:"s"`
+	Price  string `json:"p"`
+}
+
+func NewBinanceClient(config map[string]interface{}) (ExchangeClient, error) {
+	wsURL, ok := config["ws_url"].(string)
+	if !ok {
+		return nil, fmt.Errorf("missing or invalid ws_url in Binance config")
+	}
+	return &BinanceClient{wsUrl: wsURL}, nil
 }
 
 func (b *BinanceClient) Connect(ctx context.Context, symbol string) (<-chan Tick, error) {
 	tickChan := make(chan Tick)
 
-	url := fmt.Sprintf("wss://stream.binance.com:9443/ws/%s@aggTrade", symbol)
+	url := fmt.Sprintf("%s/%s@aggTrade", b.wsUrl, symbol)
 
-	log.Println("Starting Binance client for symbol:", symbol)
+	log.Println("Starting Binance client for symbol:", url, symbol)
 
 	c, _, err := websocket.DefaultDialer.DialContext(ctx, url, nil)
 	if err != nil {
@@ -59,33 +68,23 @@ func (b *BinanceClient) Connect(ctx context.Context, symbol string) (<-chan Tick
 					return
 				}
 
-				var rawTick struct {
-					Symbol string `json:"s"`
-					Price  string `json:"p"`
-				}
-
-				if err := json.Unmarshal(message, &rawTick); err != nil {
+				if err := json.Unmarshal(message, &binanceRawTick); err != nil {
 					log.Printf("Error unmarshalling message for symbol %s: %v", symbol, err)
 					continue
 				}
 
-				price, err := strconv.ParseFloat(rawTick.Price, 64)
+				price, err := strconv.ParseFloat(binanceRawTick.Price, 64)
 				if err != nil {
-					log.Printf("Error parsing price for symbol %s: %v", rawTick.Symbol, err)
+					log.Printf("Error parsing price for symbol %s: %v", binanceRawTick.Symbol, err)
 					continue
 				}
 
-				tickChan <- Tick{Symbol: rawTick.Symbol, Price: price}
+				tickChan <- Tick{Symbol: binanceRawTick.Symbol, Price: price}
 			}
 		}
 	}()
 
 	return tickChan, nil
-}
-
-func (b *BinanceClient) GetAvailableSymbols() ([]string, error) {
-	// For simplicity, we're returning a static list here
-	return []string{"BTCUSDT", "ETHUSDT", "PEPEUSDT"}, nil
 }
 
 func (b *BinanceClient) GetHistoricalData(symbol string, limit int) ([]models.Candle, error) {

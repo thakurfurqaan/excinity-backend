@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"excinity/models"
-	"excinity/routes"
 
 	"github.com/gorilla/websocket"
 )
@@ -65,7 +64,7 @@ func startBinanceClient(symbol string) {
 		now := time.Now().UTC()
 		if now.Minute() != candleStartTime.Minute() || currentCandle.Open == 0 {
 			if currentCandle.Open != 0 {
-				routes.BroadcastData(currentCandle)
+				// routes.BroadcastData(currentCandle)
 			}
 			candleStartTime = now.Truncate(time.Minute)
 			currentCandle = models.Candle{
@@ -86,6 +85,6 @@ func startBinanceClient(symbol string) {
 			}
 		}
 
-		routes.BroadcastData(currentCandle)
+		// routes.BroadcastData(currentCandle)
 	}
 }

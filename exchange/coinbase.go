@@ -15,8 +15,8 @@ type CoinbaseClient struct {
 	// Add any Coinbase-specific fields here
 }
 
-func NewCoinbaseClient() *CoinbaseClient {
-	return &CoinbaseClient{}
+func NewCoinbaseClient(config map[string]interface{}) (ExchangeClient, error) {
+	return &CoinbaseClient{}, nil
 }
 
 func (c *CoinbaseClient) Connect(ctx context.Context, symbol string) (<-chan Tick, error) {

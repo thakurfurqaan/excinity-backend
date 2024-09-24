@@ -1,10 +1,15 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type Candle struct {
-	Symbol    string    `json:"symbol"`
-	Timestamp time.Time `json:"timestamp"`
+	gorm.Model
+	Symbol    string    `json:"symbol" gorm:"index:idx_symbol_timestamp"`
+	Timestamp time.Time `json:"timestamp" gorm:"index:idx_symbol_timestamp"`
 	Open      float64   `json:"open"`
 	High      float64   `json:"high"`
 	Low       float64   `json:"low"`

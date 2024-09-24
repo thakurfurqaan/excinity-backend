@@ -12,6 +12,5 @@ type Tick struct {
 
 type ExchangeClient interface {
 	Connect(ctx context.Context, symbol string) (<-chan Tick, error)
-	GetAvailableSymbols() ([]string, error)
 	GetHistoricalData(symbol string, limit int) ([]models.Candle, error)
 }

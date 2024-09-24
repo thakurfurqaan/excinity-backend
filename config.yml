@@ -1,0 +1,36 @@
+server:
+  address: "0.0.0.0"
+  port: "8080"
+
+database:
+  driver: "sqlite3"
+  dsn: "./candlestick.db"
+
+exchanges:
+  - name: "binance"
+    config:
+      ws_url: "wss://stream.binance.com:9443/ws"
+      api_key: "BINANCE_API_KEY"
+      api_secret: "BINANCE_API_SECRET"
+      use_testnet: false
+  - name: "coinbase"
+    config:
+      ws_url: "wss://ws-feed.exchange.coinbase.com"
+      api_key: "COINBASE_API_KEY"
+      api_secret: "COINBASE_API_SECRET"
+      passphrase: "COINBASE_PASSPHRASE"
+      use_sandbox: false
+
+symbols:
+  - name: BTCUSDT
+    exchange: binance
+    symbol: btcusdt
+    active: true
+  - name: ETHUSDT
+    exchange: binance
+    symbol: ethusdt
+    active: true
+  - name: PEPEUSDT
+    exchange: binance
+    symbol: pepeusdt
+    active: true
