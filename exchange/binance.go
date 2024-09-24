@@ -13,6 +13,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	maxRetries        = 5
+	reconnectInterval = 5 * time.Second
+)
+
 type BinanceClient struct {
 	wsUrl string
 }
@@ -43,19 +48,18 @@ func (b *BinanceClient) dialWebSocket(ctx context.Context, symbol string) (*webs
 	return c, nil
 }
 
-func (b *BinanceClient) handleWebSocketConnection(ctx context.Context, c *websocket.Conn, symbol string, tickChan chan<- Tick) {
-	defer close(tickChan)
+func (b *BinanceClient) handleWebSocketConnection(ctx context.Context, c *websocket.Conn, symbol string, tickChan chan<- Tick) error {
 	defer closeWebsocketConn(c, symbol)
 
 	for {
 		select {
 		case <-ctx.Done():
 			log.Printf("Context cancelled for symbol %s", symbol)
-			return
+			return nil
 		default:
 			if err := b.readAndProcessMessage(c, tickChan); err != nil {
 				log.Printf("Error processing message for symbol %s: %v", symbol, err)
-				return
+				return err
 			}
 		}
 	}
@@ -84,7 +88,6 @@ func (b *BinanceClient) readAndProcessMessage(c *websocket.Conn, tickChan chan<-
 }
 
 func (b *BinanceClient) parseMessage(message []byte) (Tick, error) {
-
 	var binanceRawTick BinanceTick
 
 	if err := json.Unmarshal(message, &binanceRawTick); err != nil {
@@ -103,14 +106,51 @@ func (b *BinanceClient) parseMessage(message []byte) (Tick, error) {
 func (b *BinanceClient) Connect(ctx context.Context, symbol string) (<-chan Tick, error) {
 	tickChan := make(chan Tick)
 
-	c, err := b.dialWebSocket(ctx, symbol)
-	if err != nil {
-		return nil, err
-	}
-
-	go b.handleWebSocketConnection(ctx, c, symbol, tickChan)
+	go b.manageConnection(ctx, symbol, tickChan)
 
 	return tickChan, nil
+}
+
+func (b *BinanceClient) manageConnection(ctx context.Context, symbol string, tickChan chan<- Tick) {
+	defer close(tickChan)
+
+	retries := 0
+	for {
+		if err := b.connectAndHandle(ctx, symbol, tickChan); err != nil {
+			if !b.shouldRetry(ctx, symbol, &retries) {
+				return
+			}
+			continue
+		}
+		retries = 0
+	}
+}
+
+func (b *BinanceClient) connectAndHandle(ctx context.Context, symbol string, tickChan chan<- Tick) error {
+	c, err := b.dialWebSocket(ctx, symbol)
+	if err != nil {
+		return fmt.Errorf("failed to connect: %w", err)
+	}
+	defer closeWebsocketConn(c, symbol)
+
+	return b.handleWebSocketConnection(ctx, c, symbol, tickChan)
+}
+
+func (b *BinanceClient) shouldRetry(ctx context.Context, symbol string, retries *int) bool {
+	*retries++
+	if *retries >= maxRetries {
+		log.Printf("Max retries reached for symbol %s. Stopping reconnection attempts.", symbol)
+		return false
+	}
+
+	log.Printf("Attempting to reconnect for symbol %s (Retry %d/%d)", symbol, *retries, maxRetries)
+
+	select {
+	case <-ctx.Done():
+		return false
+	case <-time.After(reconnectInterval):
+		return true
+	}
 }
 
 func (b *BinanceClient) GetHistoricalData(symbol string, limit int) ([]models.Candle, error) {
