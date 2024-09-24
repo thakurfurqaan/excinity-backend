@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"sync"
 	"time"
 
@@ -42,6 +43,30 @@ func (s *AggregationService) StartSymbolStream(client exchange.ExchangeClient, s
 	return nil
 }
 
+func (s *AggregationService) isNewCandlePeriod(now time.Time, candle models.Candle) bool {
+	return now.Minute() != candle.Timestamp.Minute()
+}
+
+func (s *AggregationService) handleNewCandle(tick exchange.Tick, now time.Time, currentCandle models.Candle, exists bool) models.Candle {
+	if exists {
+		s.db.SaveCandle(&currentCandle)
+	}
+	return models.Candle{
+		Symbol:    tick.Symbol,
+		Timestamp: now.Truncate(time.Minute),
+		Open:      tick.Price,
+		High:      tick.Price,
+		Low:       tick.Price,
+		Close:     tick.Price,
+	}
+}
+
+func (s *AggregationService) updateExistingCandle(candle *models.Candle, tick exchange.Tick) {
+	candle.Close = tick.Price
+	candle.High = math.Max(candle.High, tick.Price)
+	candle.Low = math.Min(candle.Low, tick.Price)
+}
+
 func (s *AggregationService) processTickToCandle(tick exchange.Tick) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -49,26 +74,10 @@ func (s *AggregationService) processTickToCandle(tick exchange.Tick) {
 	now := time.Now().UTC()
 	currentCandle, ok := s.currentCandles[tick.Symbol]
 
-	if !ok || now.Minute() != currentCandle.Timestamp.Minute() {
-		if ok {
-			s.db.SaveCandle(&currentCandle)
-		}
-		currentCandle = models.Candle{
-			Symbol:    tick.Symbol,
-			Timestamp: now.Truncate(time.Minute),
-			Open:      tick.Price,
-			High:      tick.Price,
-			Low:       tick.Price,
-			Close:     tick.Price,
-		}
+	if !ok || s.isNewCandlePeriod(now, currentCandle) {
+		s.handleNewCandle(tick, now, currentCandle, ok)
 	} else {
-		currentCandle.Close = tick.Price
-		if tick.Price > currentCandle.High {
-			currentCandle.High = tick.Price
-		}
-		if tick.Price < currentCandle.Low {
-			currentCandle.Low = tick.Price
-		}
+		s.updateExistingCandle(&currentCandle, tick)
 	}
 
 	s.currentCandles[tick.Symbol] = currentCandle

@@ -1,3 +1,5 @@
+// Only for demo purposes, it hasn't been fully implemented
+
 package exchange
 
 import (

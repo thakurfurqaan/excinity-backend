@@ -36,27 +36,42 @@ func SetupRoutes(aggregationService *services.AggregationService) *mux.Router {
 func handleWebSocket(w http.ResponseWriter, r *http.Request, aggregationService *services.AggregationService) {
 	symbol := mux.Vars(r)["symbol"]
 
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upgradeConnection(w, r)
 	if err != nil {
 		http.Error(w, "Could not open websocket connection", http.StatusBadRequest)
 		return
 	}
 	defer conn.Close()
 
+	streamCandles(conn, symbol, aggregationService)
+}
+
+func upgradeConnection(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
+	return upgrader.Upgrade(w, r, nil)
+}
+
+func streamCandles(conn *websocket.Conn, symbol string, aggregationService *services.AggregationService) {
 	for {
 		candle, err := aggregationService.GetLatestCandle(symbol)
 		if err != nil {
-			conn.WriteMessage(websocket.TextMessage, []byte(err.Error()))
+			sendError(conn, err)
 			return
 		}
 
-		err = conn.WriteJSON(candle)
-		if err != nil {
+		if err := sendCandle(conn, candle); err != nil {
 			return
 		}
 
 		time.Sleep(config.STREAM_UPDATE_INTERVAL)
 	}
+}
+
+func sendError(conn *websocket.Conn, err error) {
+	conn.WriteMessage(websocket.TextMessage, []byte(err.Error()))
+}
+
+func sendCandle(conn *websocket.Conn, candle interface{}) error {
+	return conn.WriteJSON(candle)
 }
 
 func getHistoricalData(w http.ResponseWriter, r *http.Request, aggregationService *services.AggregationService) {
