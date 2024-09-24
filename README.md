@@ -1,1 +1,3 @@
-Run: `docker-compose up --build`
+# Excinity Backend
+
+## Run: `docker-compose up --build`

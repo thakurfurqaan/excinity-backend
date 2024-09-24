@@ -5,10 +5,4 @@ services:
       target: builder
     ports:
       - "8080:8080"
-    volumes:
-      - ./candles.json:/app/candles.json
-    command: air -c .air.toml
-
-
-volumes:
-  app_data:
+    command: ./main

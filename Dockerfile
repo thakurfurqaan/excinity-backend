@@ -4,8 +4,6 @@ WORKDIR /app
 
 RUN apk add --no-cache gcc musl-dev
 
-RUN go install github.com/air-verse/air@latest
-
 COPY go.mod go.sum ./
 RUN go mod download
 
@@ -23,5 +21,3 @@ COPY --from=builder /app/main .
 COPY .env .
 
 EXPOSE 8080
-
-CMD ["air", "-c", ".air.toml"]
