@@ -46,10 +46,7 @@ func (s *AggregationService) isNewCandlePeriod(now time.Time, candle models.Cand
 	return now.Minute() != candle.Timestamp.Minute()
 }
 
-func (s *AggregationService) handleNewCandle(tick exchange.Tick, now time.Time, currentCandle models.Candle, exists bool) models.Candle {
-	if exists {
-		s.db.SaveCandle(&currentCandle)
-	}
+func (s *AggregationService) createNewCandle(tick exchange.Tick, now time.Time) models.Candle {
 	return models.Candle{
 		Symbol:    tick.Symbol,
 		Timestamp: now.Truncate(time.Minute),
@@ -58,6 +55,13 @@ func (s *AggregationService) handleNewCandle(tick exchange.Tick, now time.Time, 
 		Low:       tick.Price,
 		Close:     tick.Price,
 	}
+}
+
+func (s *AggregationService) handleNewCandle(tick exchange.Tick, now time.Time, currentCandle models.Candle, exists bool) models.Candle {
+	if exists {
+		s.db.SaveCandle(&currentCandle)
+	}
+	return s.createNewCandle(tick, now)
 }
 
 func (s *AggregationService) updateExistingCandle(candle models.Candle, tick exchange.Tick) models.Candle {

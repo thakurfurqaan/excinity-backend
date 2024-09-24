@@ -17,7 +17,7 @@ type BinanceClient struct {
 	wsUrl string
 }
 
-var binanceRawTick struct {
+type BinanceTick struct {
 	Symbol string `json:"s"`
 	Price  string `json:"p"`
 }
@@ -85,6 +85,8 @@ func (b *BinanceClient) readAndProcessMessage(c *websocket.Conn, tickChan chan<-
 
 func (b *BinanceClient) parseMessage(message []byte) (Tick, error) {
 
+	var binanceRawTick BinanceTick
+
 	if err := json.Unmarshal(message, &binanceRawTick); err != nil {
 		return Tick{}, fmt.Errorf("error unmarshalling message: %w", err)
 	}
@@ -94,7 +96,8 @@ func (b *BinanceClient) parseMessage(message []byte) (Tick, error) {
 		return Tick{}, fmt.Errorf("error parsing price: %w", err)
 	}
 
-	return Tick{Symbol: binanceRawTick.Symbol, Price: price}, nil
+	tick := Tick{Symbol: binanceRawTick.Symbol, Price: price}
+	return tick, nil
 }
 
 func (b *BinanceClient) Connect(ctx context.Context, symbol string) (<-chan Tick, error) {
