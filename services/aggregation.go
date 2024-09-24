@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math"
 	"sync"
 	"time"
 
@@ -61,10 +60,11 @@ func (s *AggregationService) handleNewCandle(tick exchange.Tick, now time.Time, 
 	}
 }
 
-func (s *AggregationService) updateExistingCandle(candle *models.Candle, tick exchange.Tick) {
+func (s *AggregationService) updateExistingCandle(candle models.Candle, tick exchange.Tick) models.Candle {
 	candle.Close = tick.Price
-	candle.High = math.Max(candle.High, tick.Price)
-	candle.Low = math.Min(candle.Low, tick.Price)
+	candle.High = max(candle.High, tick.Price)
+	candle.Low = min(candle.Low, tick.Price)
+	return candle
 }
 
 func (s *AggregationService) processTickToCandle(tick exchange.Tick) {
@@ -75,9 +75,9 @@ func (s *AggregationService) processTickToCandle(tick exchange.Tick) {
 	currentCandle, ok := s.currentCandles[tick.Symbol]
 
 	if !ok || s.isNewCandlePeriod(now, currentCandle) {
-		s.handleNewCandle(tick, now, currentCandle, ok)
+		currentCandle = s.handleNewCandle(tick, now, currentCandle, ok)
 	} else {
-		s.updateExistingCandle(&currentCandle, tick)
+		currentCandle = s.updateExistingCandle(currentCandle, tick)
 	}
 
 	s.currentCandles[tick.Symbol] = currentCandle
